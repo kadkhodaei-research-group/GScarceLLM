@@ -1,4 +1,6 @@
 # LLM Strategies for the Scarce LLM Dataset
+This code has been developed with the support of the NSF DMREF Collaborative Project – DMR-2119308.
+
 ![LLM Strategies](images/abstract.png)
 
 **Note:** To learn about the features of this code, check out the supplementary information file @ [https://arxiv.org/abs/2503.04870](https://arxiv.org/abs/2503.04870)
