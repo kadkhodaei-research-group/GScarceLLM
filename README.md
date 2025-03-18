@@ -1,5 +1,8 @@
 # LLM Strategies for the Scarce LLM Dataset
 This code has been developed with the support of the NSF DMREF Collaborative Project – DMR-2119308.
+## License
+
+This project is licensed under the Creative Commons License - see the [LICENSE](LICENSE) file for details.
 
 ![LLM Strategies](images/abstract.png)
 
