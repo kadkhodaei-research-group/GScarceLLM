@@ -112,9 +112,7 @@ def supervised_tree_binning(df, columns, target_column, min_splits=2, max_leaf_n
             bin_map[column] = "No valid splits"
     return df, bin_map
 
-# Main function to load CSV and apply binning methods
 def apply_binning(data, method, columns, n_bins_dict):
-    # Use the provided data (df) and apply the chosen binning method.
     if method == 'equal_width':
         return equal_width_binning(data, columns, n_bins_dict)
     elif method == 'equal_frequency':
@@ -124,7 +122,7 @@ def apply_binning(data, method, columns, n_bins_dict):
     elif method == 'decision_tree':
         return decision_tree_binning(data, columns)
     elif method == 'supervised_tree_binning':
-        # Here the target column is hard-coded to 'No. of Graphene Layers'
+        # Here the target column is hard-coded to 'No. of Graphene Layers' will be changed in future
         return supervised_tree_binning(data, columns, target_column='No. of Graphene Layers', 
                                        min_splits=2, max_leaf_nodes=10)
     else:
