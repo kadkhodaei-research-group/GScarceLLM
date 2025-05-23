@@ -128,9 +128,9 @@ def post_process_predictions(predictions_dict, data, attributes_to_impute, sort_
             all_imputed_values_min.append(min_prediction)
 
             # Normalize
-            norm_gt = normalize_values(ground_truth, min_value, max_value)
-            norm_avg = normalize_values(avg_prediction, min_value, max_value)
-            norm_min = normalize_values(min_prediction, min_value, max_value)
+            norm_gt = normalize_value(ground_truth, min_value, max_value)
+            norm_avg = normalize_value(avg_prediction, min_value, max_value)
+            norm_min = normalize_value(min_prediction, min_value, max_value)
 
             # Metrics
             if not np.isnan(norm_gt):
@@ -164,9 +164,9 @@ def post_process_predictions(predictions_dict, data, attributes_to_impute, sort_
         # Plot if we have data
         if all_ground_truths and ax is not None:
             # Normalize for plotting
-            norm_gts = [normalize_values(gt, min_value, max_value) for gt in all_ground_truths]
-            norm_avg = [normalize_values(pred, min_value, max_value) for pred in all_imputed_values_avg]
-            norm_min = [normalize_values(pred, min_value, max_value) for pred in all_imputed_values_min]
+            norm_gts = [normalize_value(gt, min_value, max_value) for gt in all_ground_truths]
+            norm_avg = [normalize_value(pred, min_value, max_value) for pred in all_imputed_values_avg]
+            norm_min = [normalize_value(pred, min_value, max_value) for pred in all_imputed_values_min]
 
             ax.scatter(
                 range(len(norm_gts)), norm_gts, 
