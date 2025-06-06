@@ -220,11 +220,11 @@ def clear_half_values(data, column):
     data_with_cleared.loc[sample_indices, column] = np.nan
     return data_with_cleared, original_values
 
-def impute_data(data, columns_to_impute, knn_neighbors=5):
+def impute_data(data, columns_to_impute, knn_neighbors=5,weights='uniform'):
     """
     Impute missing values using KNN, taking into account all columns in columns_to_impute.
     """
-    imputer = KNNImputer(n_neighbors=knn_neighbors, weights='uniform')
+    imputer = KNNImputer(n_neighbors=knn_neighbors, weights=weights)
     imputed_array = imputer.fit_transform(data[columns_to_impute])
     imputed_data_df = pd.DataFrame(imputed_array, columns=columns_to_impute, index=data.index)
     return imputed_data_df
