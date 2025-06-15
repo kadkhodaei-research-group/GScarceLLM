@@ -16,6 +16,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import NearestNeighbors
 from sklearn.ensemble import RandomForestClassifier
 from utils import setup_plot_style
+from collections import Counter
 # import xgboost  # XGBoost import commented out
 
 class_label_map = {
@@ -27,27 +28,39 @@ class_label_map = {
 ##############################################################################
 # Preprocessing, SHAP, and t-SNE Functions
 ##############################################################################
+
 def preprocess_with_sampling(X, y, sampling_method=None):
     """
     Apply optional sampling techniques to handle class imbalance.
-    For SMOTE:
-      - If the target is binary, a float (e.g., 0.5) is acceptable.
-      - For multi-class targets, use sampling_strategy='auto' or a dictionary.
+    - If sampling_method == 'SMOTE', but the smallest class has <= k_neighbors (5) samples,
+      skip SMOTE to avoid errors.
+    - Otherwise, run SMOTE with strategy='auto' so it only upsamples the minority.
+    - 'NearMiss' will always run undersampling.
+    - If sampling_method is None or not recognized, return (X, y) unchanged.
     """
     if sampling_method == 'SMOTE':
-        if len(np.unique(y)) > 2:
-            # For multi-class, use the default automatic strategy
-            smote = SMOTE(sampling_strategy='auto', k_neighbors=5, random_state=42)
-        else:
-            smote = SMOTE(sampling_strategy=0.5, k_neighbors=5, random_state=42)
+        # Count occurrences of each class
+        class_counts = Counter(y)
+        min_count = min(class_counts.values())
+        
+        # SMOTE needs at least (k_neighbors + 1) samples in every class to upsample
+        if min_count <= 5:
+            # Too few minority samples → skip SMOTE altogether
+            return X, y
+        
+        # Otherwise, perform SMOTE (only upsamples minority to match majority)
+        smote = SMOTE(sampling_strategy='auto', k_neighbors=5, random_state=42)
         X_resampled, y_resampled = smote.fit_resample(X, y)
+        return X_resampled, y_resampled
+
     elif sampling_method == 'NearMiss':
         from imblearn.under_sampling import NearMiss
         near_miss = NearMiss()
         X_resampled, y_resampled = near_miss.fit_resample(X, y)
-    else:
-        X_resampled, y_resampled = X, y  # No sampling if None
-    return X_resampled, y_resampled
+        return X_resampled, y_resampled
+
+    # No sampling requested or unrecognized method: return original data
+    return X, y
 
 
 def manual_shap(model, X, feature_names, num_samples=100):

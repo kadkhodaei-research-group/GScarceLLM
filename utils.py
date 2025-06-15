@@ -12,6 +12,9 @@ import matplotlib.ticker as ticker
 from scipy.stats import wasserstein_distance
 from scipy.spatial.distance import jensenshannon
 import seaborn as sns
+from sklearn.experimental import enable_iterative_imputer  
+from sklearn.impute import IterativeImputer
+from sklearn.ensemble import RandomForestRegressor
 
 '''This file contains utility functions that are used in other scripts.'''
 
@@ -220,7 +223,7 @@ def clear_half_values(data, column):
     data_with_cleared.loc[sample_indices, column] = np.nan
     return data_with_cleared, original_values
 
-def impute_data(data, columns_to_impute, knn_neighbors=5,weights='uniform'):
+def impute_data(data, columns_to_impute, knn_neighbors=5, weights='uniform'):
     """
     Impute missing values using KNN, taking into account all columns in columns_to_impute.
     """
@@ -381,81 +384,110 @@ pretty_names = {
 }
 
 method_colors = {
-    'KNN': '#4E79A7',
+    'KNN-U': '#4E79A7',
+    'KNN-D': '#A6CEE3',
     'GUIDE': '#F28E2B',
     'MAP': '#E15759',
     'MAPV': '#76B7B2',
     'CITE': '#59A14F',
     'CITEV': '#EDC948',
-    'GIST': '#FF5733'
+    'GIST': '#FF5733',
+    'MICE': '#B39DDB',
 }
 
-def compare_knn_gpt4o_mae(errors, methods_mae, save_path=None):
-    variables = list(errors.keys())
-    knn_values = [round(errors[var]["MAE"], 3) for var in variables]
-    method_names = list(methods_mae.keys())
-    method_values = {method: [round(methods_mae[method][var], 3) for var in variables] for method in method_names}
+def compare_knn_gpt4o_mae(errors_uniform,
+                          errors_distance,
+                          errors_mice,
+                          methods_mae,
+                          save_path=None):
+    """
+    Plots per-column MAE bars for:
+        • KNN  (weights='uniform')
+        • KNN  (weights='distance')
+        • MICE (RandomForest)
+        • every GPT-based method in `methods_mae`
+    """
+    # ----- organise the data ------------------------------------------------
+    variables     = list(errors_uniform.keys())
+    knn_uni_vals  = [round(errors_uniform[v]["MAE"],  3) for v in variables]
+    knn_dist_vals = [round(errors_distance[v]["MAE"], 3) for v in variables]
+    mice_vals     = [round(errors_mice[v]["MAE"],     3) for v in variables]
     
-    n_cols = 2
-    n_rows = ceil(len(variables) / n_cols)
-    width_in, height_in = 8, 6
-    
-    fig, axs = plt.subplots(nrows=n_rows, ncols=n_cols,
-                            figsize=(width_in, height_in),
-                            facecolor='white')
-    axs = axs.flatten()
-    
+    method_names  = list(methods_mae.keys())
+    method_vals   = {
+        m: [round(methods_mae[m][v], 3) for v in variables]
+        for m in method_names
+    }
+
+    # ----- figure layout ----------------------------------------------------
+    n_cols   = 2
+    n_rows   = ceil(len(variables) / n_cols)
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(10, 6), facecolor='white')
+    axs      = axs.flatten()
     fig.text(0.04, 0.5, "Mean Absolute Error (MAE)",
              va='center', rotation='vertical', fontsize=10)
-    
-    x_positions = np.arange(len(method_names) + 1)
-    width = 0.4
-    
+
+    # 0=KNN-U, 1=KNN-D, 2=MICE, 3…=GPTs
+    x_pos = np.arange(len(method_names) + 3)
+    width = 0.30
+
+    # ----- draw bars --------------------------------------------------------
     for i, var in enumerate(variables):
         ax = axs[i]
-        ax.bar(x_positions[0], knn_values[i], width,
-               label='KNN',
-               color=method_colors['KNN'],
-               alpha=0.85,
-               edgecolor='black')
-        
-        for j, method in enumerate(method_names):
-            bar_color = method_colors.get(method, '#333333')
-            ax.bar(x_positions[j + 1], method_values[method][i], width,
-                   label=method,
-                   color=bar_color,
-                   alpha=0.85,
-                   edgecolor='black')
-        
-        attribute_title = pretty_names.get(var, var)
-        ax.set_title(attribute_title, fontsize=10, pad=10, fontweight='normal')
-        
-        row = i // n_cols
-        if row == n_rows - 1:
-            ax.set_xticks(x_positions)
-            ax.set_xticklabels(['KNN'] + method_names, rotation=15)
+
+        # KNN-uniform
+        ax.bar(x_pos[0], knn_uni_vals[i], width,
+               label='KNN-U',
+               color=method_colors['KNN-U'],
+               alpha=.85, edgecolor='black')
+
+        # KNN-distance
+        ax.bar(x_pos[1], knn_dist_vals[i], width,
+               label='KNN-D',
+               color=method_colors['KNN-D'],
+               alpha=.85, edgecolor='black')
+
+        # MICE
+        ax.bar(x_pos[2], mice_vals[i], width,
+               label='MICE',
+               color=method_colors['MICE'],
+               alpha=.85, edgecolor='black')
+
+        # GPT methods
+        for j, m in enumerate(method_names):
+            ax.bar(x_pos[j + 3], method_vals[m][i], width,
+                   label=m,
+                   color=method_colors.get(m, '#333333'),
+                   alpha=.85, edgecolor='black')
+
+        ax.set_title(pretty_names.get(var, var), fontsize=10, pad=8)
+
+        # show tick labels only on bottom row
+        if i // n_cols == n_rows - 1:
+            ax.set_xticks(x_pos)
+            ax.set_xticklabels(
+                ['KNN-U', 'KNN-D', 'MICE'] + method_names,
+                rotation=15
+            )
         else:
-            ax.set_xticks(x_positions)
-            ax.set_xticklabels([])
-        
+            ax.set_xticks([])
+
+        ax.grid(True, axis='y', linestyle='--', alpha=.5)
+        ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.3f'))
         for spine in ax.spines.values():
             spine.set_visible(True)
             spine.set_color('black')
             spine.set_linewidth(1.2)
-        
-        ax.grid(True, which='both', axis='y', linestyle='--', alpha=0.5)
-        ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.3f'))
-    
-    for i in range(len(variables), len(axs)):
-        fig.delaxes(axs[i])
-    
+
+    # delete any unused sub-plots
+    for j in range(len(variables), len(axs)):
+        fig.delaxes(axs[j])
+
     fig.tight_layout(rect=[0.07, 0.03, 1, 0.97])
-    fig.patch.set_edgecolor('black')
-    fig.patch.set_linewidth(2)
-    
+    fig.patch.set_edgecolor('black'); fig.patch.set_linewidth(2)
+
     if save_path:
         plt.savefig(save_path, format='pdf', bbox_inches='tight')
-    
     plt.show()
 
 def compare_knn_gpt4o_mse(errors, methods_mse, save_path=None):
@@ -904,3 +936,81 @@ def plot_avg_deviations(avg_deviations_dict):
     
     plt.tight_layout()
     plt.show()
+
+    ############################################### MICE Imputation Functions ####################################################r
+
+def mice_impute_data(df, attributes_to_impute):
+    """
+    Perform MICE imputation (with a RandomForestRegressor) on the numeric columns of `df`,
+    while preserving non-numeric columns (e.g. 'CVD Method', 'Substrate') in the output.
+    Also, keep an unmodified copy of 'No. of Graphene Layers' in a new column
+    'No. of Graphene Layers_orig' before binary-encoding the original for MICE.
+    
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        A preprocessed DataFrame containing:
+          - Numeric columns (including those in `attributes_to_impute`) possibly with NaNs.
+          - Non-numeric columns (e.g. 'CVD Method', 'Substrate'), which should remain untouched.
+          - A column named 'No. of Graphene Layers' (strings or numbers).
+    attributes_to_impute : list of str
+        List of column names (must be numeric after encoding) that you care about imputing.
+        MICE will actually fill any NaN in any numeric column, but you typically call this
+        when only those columns have missing values.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A DataFrame with the same columns (both numeric and non-numeric) and index as `df`,
+        where:
+          - 'No. of Graphene Layers_orig' holds the original values of that column.
+          - 'No. of Graphene Layers' is binary-encoded (0.0 if ≤1 layer, 1.0 if >1, NaN if missing),
+            then imputed by MICE if it had NaN.
+          - All other numeric columns are imputed wherever they were NaN.
+          - Non-numeric columns (e.g. 'CVD Method', 'Substrate') remain exactly as in `df`.
+    """
+    # 1) Make a copy of the input to avoid side effects
+    df_copy = df.copy()
+
+    # 2) Keep an unmodified copy of "No. of Graphene Layers"
+    df_copy["No. of Graphene Layers_orig"] = df_copy["No. of Graphene Layers"]
+
+    # 3) Binary-encode "No. of Graphene Layers" in-place
+    df_copy["No. of Graphene Layers"] = (
+        df_copy["No. of Graphene Layers"]
+          .replace("ML", 10.0)                     # treat any 'ML' as 10.0
+          .pipe(pd.to_numeric, errors="coerce")    # convert to float; invalid→NaN
+          .apply(lambda x: np.nan if pd.isna(x)
+                           else (0.0 if x <= 1 else 1.0))
+          .astype(float)
+    )
+
+    # 4) Identify all numeric columns (including the newly binary-encoded layer column)
+    numeric_cols = df_copy.select_dtypes(include=[np.number]).columns.tolist()
+
+    # 5) Extract just those numeric columns (so that MICE won't see any strings)
+    numeric_df = df_copy[numeric_cols]
+
+    # 6) Configure the IterativeImputer (MICE) with RandomForestRegressor
+    mice_imputer = IterativeImputer(
+        estimator=RandomForestRegressor(n_estimators=100, random_state=0),
+        max_iter=10,
+        initial_strategy='mean',
+        random_state=0
+    )
+
+    # 7) Fit MICE and transform all numeric columns
+    imputed_array = mice_imputer.fit_transform(numeric_df)
+
+    # 8) Turn that back into a DataFrame with original index & column names
+    imputed_numeric = pd.DataFrame(
+        imputed_array,
+        index=numeric_df.index,
+        columns=numeric_df.columns
+    )
+
+    # 9) Build the final DataFrame: start from df_copy, replace numeric cols with imputed
+    df_filled = df_copy.copy()
+    df_filled[numeric_cols] = imputed_numeric
+
+    return df_filled
