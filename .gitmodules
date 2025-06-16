@@ -1,0 +1,3 @@
+[submodule "external/metalhydride"]
+	path = external/metalhydride
+	url = https://github.com/mwitman1/MetalHydrideML.git
