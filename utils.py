@@ -15,6 +15,8 @@ import seaborn as sns
 from sklearn.experimental import enable_iterative_imputer  
 from sklearn.impute import IterativeImputer
 from sklearn.ensemble import RandomForestRegressor
+import sys, pathlib
+sys.path.append(pathlib.Path(__file__).parent / "external" / "metalhydride")
 
 '''This file contains utility functions that are used in other scripts.'''
 
@@ -48,7 +50,7 @@ def call_chatgpt_4o(prompt, temperature):
     Call ChatGPT-4o with a prompt to impute missing values.
     """
     response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
+        model="gpt-4.1-nano",
         temperature=temperature,
         messages=[
             {"role": "system", "content": "You are an expert in data imputation."},

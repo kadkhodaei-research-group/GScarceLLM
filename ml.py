@@ -17,6 +17,9 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.ensemble import RandomForestClassifier
 from utils import setup_plot_style
 from collections import Counter
+import sys, pathlib
+sys.path.append(pathlib.Path(__file__).parent / "external" / "metalhydride")
+
 # import xgboost  # XGBoost import commented out
 
 class_label_map = {

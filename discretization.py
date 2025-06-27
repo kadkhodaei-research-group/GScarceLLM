@@ -4,6 +4,8 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import silhouette_score
+import sys, pathlib
+sys.path.append(pathlib.Path(__file__).parent / "external" / "metalhydride")
 
 def equal_width_binning(df, columns, n_bins_dict):
     bin_map = {}

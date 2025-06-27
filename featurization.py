@@ -6,6 +6,9 @@ import openai
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from sklearn.impute import KNNImputer
 import ast
+import sys, pathlib
+sys.path.append(pathlib.Path(__file__).parent / "external" / "metalhydride")
+
 
 def preprocess_data(data):
     """

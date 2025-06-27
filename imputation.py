@@ -2,6 +2,8 @@ import pandas as pd
 from utils import call_chatgpt_4o
 from featurization import preprocess_data
 from utils import load_graphene_data
+import sys, pathlib
+sys.path.append(pathlib.Path(__file__).parent / "external" / "metalhydride")
 
 raw_data = load_graphene_data()
 data_preprocessed = preprocess_data(raw_data)
